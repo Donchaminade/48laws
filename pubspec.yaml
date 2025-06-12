@@ -1,0 +1,38 @@
+name: fohuit_lois
+description: "A new Flutter project."
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  share_plus: ^11.0.0
+  sqflite: ^2.2.5+1
+  path: ^1.8.4
+  shared_preferences: ^2.2.2
+  lucide_icons: ^0.257.0 # Replace with the latest version of lucide_icons
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Décommente cette section si tu ajoutes des assets/images :
+  # assets:
+  #   - assets/images/
+
+  # Décommente et configure si tu ajoutes des polices personnalisées :
+  # fonts:
+  #   - family: CustomFont
+  #     fonts:
+  #       - asset: fonts/CustomFont-Regular.ttf

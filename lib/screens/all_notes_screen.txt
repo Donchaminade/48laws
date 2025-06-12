@@ -1,0 +1,177 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fohuit_lois/models/law.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/storage_service.dart';
+
+class AllNotesScreen extends StatefulWidget {
+  const AllNotesScreen({super.key, required Law law});
+
+  @override
+  State<AllNotesScreen> createState() => _AllNotesScreenState();
+}
+
+class _AllNotesScreenState extends State<AllNotesScreen> {
+  Map<int, List<String>> notesMap = {};
+
+  @override
+  void initState() {
+    super.initState();
+    loadAllNotes();
+  }
+
+  Future<void> loadAllNotes() async {
+    final allNotes = await StorageService.getAllNotes();
+    setState(() {
+      notesMap = allNotes;
+    });
+  }
+
+  void _copyNote(String note) {
+    Clipboard.setData(ClipboardData(text: note));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Note copiée')),
+    );
+  }
+
+  void _editNote(int lawNumber, int noteIndex) {
+    final TextEditingController controller =
+        TextEditingController(text: notesMap[lawNumber]![noteIndex]);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Modifier la note pour la loi $lawNumber'),
+        content: TextField(
+          controller: controller,
+          maxLines: null,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final updatedText = controller.text.trim();
+              if (updatedText.isNotEmpty) {
+                final prefs = await SharedPreferences.getInstance();
+                final key = 'notes_$lawNumber';
+                final notes = prefs.getStringList(key) ?? [];
+                notes[noteIndex] = updatedText;
+                await prefs.setStringList(key, notes);
+                Navigator.pop(context);
+                loadAllNotes();
+              }
+            },
+            child: const Text('Sauvegarder'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addNoteDialog() {
+    final TextEditingController numeroController = TextEditingController();
+    final TextEditingController noteController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Ajouter une note"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: numeroController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: "Numéro de la loi"),
+            ),
+            TextField(
+              controller: noteController,
+              maxLines: null,
+              decoration: const InputDecoration(labelText: "Note"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Annuler"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final numero = int.tryParse(numeroController.text.trim());
+              final note = noteController.text.trim();
+              if (numero != null && note.isNotEmpty) {
+                await StorageService.addNote(numero, note);
+                Navigator.pop(context);
+                loadAllNotes();
+              }
+            },
+            child: const Text("Ajouter"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = notesMap.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Toutes les notes"),
+        backgroundColor: Colors.indigo,
+      ),
+      backgroundColor: Colors.black,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addNoteDialog,
+        backgroundColor: Colors.indigo,
+        child: const Icon(Icons.add),
+      ),
+      body: notesMap.isEmpty
+          ? const Center(
+              child: Text("Aucune note enregistrée",
+                  style: TextStyle(color: Colors.white70)),
+            )
+          : ListView.builder(
+              itemCount: entries.length,
+              itemBuilder: (_, index) {
+                final numero = entries[index].key;
+                final notes = entries[index].value;
+
+                return ExpansionTile(
+                  title: Text("Loi $numero",
+                      style: const TextStyle(color: Colors.white)),
+                  collapsedIconColor: Colors.white54,
+                  iconColor: Colors.white,
+                  children: List.generate(notes.length, (i) {
+                    final note = notes[i];
+                    return ListTile(
+                      title: Text(note,
+                          style: const TextStyle(color: Colors.white70)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.white60),
+                            onPressed: () => _editNote(numero, i),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy,
+                                color: Colors.lightBlueAccent),
+                            onPressed: () => _copyNote(note),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+    );
+  }
+}
