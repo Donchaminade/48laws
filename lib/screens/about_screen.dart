@@ -193,7 +193,12 @@ _bodyText(
   '- Un système de favoris pour enregistrer ses lois préférées.\n'
   '- Une fonctionnalité de prise de notes pour annoter ses réflexions personnelles sur chaque loi.\n'
   '- Un mode sombre pour une lecture confortable la nuit.\n\n'
-  'L’application vise à offrir une manière moderne et interactive d’explorer la sagesse intemporelle des 48 lois du pouvoir, en encourageant les utilisateurs à réfléchir à leurs propres expériences et à appliquer ces principes dans leur vie.',
+  'L’application vise à offrir une manière moderne et interactive d’explorer la sagesse intemporelle des 48 lois du pouvoir, en encourageant les utilisateurs à réfléchir à leurs propres expériences et à appliquer ces principes dans leur vie.'
+  '\n\n'
+  'Cette application est développée par ADJOLOU Dondah Chaminade :'
+  ' \nX    (https://x.com/donchaminade)'
+  '\nLinkedIn (https://www.linkedin.com/in/chaminadeadjolou/)'
+  '\nPortfolio : https://donchaminade.vercel.app'
 ),
 
 // Ensuite, pour afficher une image en ligne qui prend toute la largeur :

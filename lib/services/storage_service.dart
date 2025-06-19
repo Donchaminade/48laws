@@ -4,8 +4,11 @@ class StorageService {
   static const _favKey = 'favorites';
   static const _noteKeyPrefix = 'notes_';
 
+  // --- FAVORITES ---
+
   static Future<List<int>> getFavorites() async {
     final prefs = await SharedPreferences.getInstance();
+    // Retourne une liste d'entiers (numéros de loi)
     return prefs.getStringList(_favKey)?.map(int.parse).toList() ?? [];
   }
 
@@ -20,29 +23,55 @@ class StorageService {
     await prefs.setStringList(_favKey, favs.map((e) => e.toString()).toList());
   }
 
-  static Future<List<String>> getNotes(int numero) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('$_noteKeyPrefix$numero') ?? [];
+  // Cette méthode est spécifiquement pour le BottomNav pour obtenir le compte des favoris
+  static Future<List<int>> getAllFavoriteLaws() async {
+    return await getFavorites();
   }
 
-  static Future<void> addNote(int numero, String note) async {
+  // --- NOTES ---
+
+  // Obtient la note unique pour une loi donnée
+  static Future<String?> getNoteForLaw(int lawNumber) async {
     final prefs = await SharedPreferences.getInstance();
-    final existing = await getNotes(numero);
-    existing.add(note);
-    await prefs.setStringList('$_noteKeyPrefix$numero', existing);
+    return prefs.getString('$_noteKeyPrefix$lawNumber');
   }
 
-  static Future<Map<int, List<String>>> getAllNotes() async {
+  // Sauvegarde/Met à jour la note pour une loi donnée
+  static Future<void> saveNoteForLaw(int lawNumber, String noteText) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (noteText.isEmpty) {
+      // Si la note est vide, on la supprime (équivalent à supprimer)
+      await prefs.remove('$_noteKeyPrefix$lawNumber');
+    } else {
+      await prefs.setString('$_noteKeyPrefix$lawNumber', noteText);
+    }
+  }
+
+  // Supprime la note pour une loi donnée
+  static Future<void> deleteNoteForLaw(int lawNumber) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_noteKeyPrefix$lawNumber');
+  }
+
+
+  // Récupère toutes les notes stockées
+  static Future<List<Map<String, dynamic>>> getAllNotes() async {
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys();
-    final notesMap = <int, List<String>>{};
+    final List<Map<String, dynamic>> notesList = [];
+
     for (var key in keys) {
       if (key.startsWith(_noteKeyPrefix)) {
-        final numero = int.parse(key.replaceFirst(_noteKeyPrefix, ''));
-        final notes = prefs.getStringList(key) ?? [];
-        notesMap[numero] = notes;
+        final lawNumber = int.parse(key.replaceFirst(_noteKeyPrefix, ''));
+        final noteText = prefs.getString(key); // Utilise getString car c'est une note unique
+        if (noteText != null && noteText.isNotEmpty) {
+          notesList.add({
+            'lawNumber': lawNumber,
+            'note': noteText,
+          });
+        }
       }
     }
-    return notesMap;
+    return notesList;
   }
 }

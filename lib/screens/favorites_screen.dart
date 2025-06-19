@@ -61,7 +61,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               Text(
                 "Loi ${law.numero}",
                 style: const TextStyle(
-                    color: Colors.orangeAccent,
+                    color: Color.fromARGB(255, 221, 199, 3),
                     fontSize: 20,
                     fontWeight: FontWeight.bold),
               ),
@@ -83,7 +83,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               Text(
                 "Explication :",
                 style: TextStyle(
-                    color: Colors.orangeAccent.shade100,
+                    color: const Color.fromARGB(255, 93, 103, 240),
                     fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),

@@ -114,25 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // ElevatedButton.icon(
-                    //   onPressed: () {
-                    //     Navigator.pop(context);
-                    //     Navigator.push(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //         builder: (_) => NotesScreen(law: law),
-                    //       ),
-                    //     );
-                    //   },
-                    //   icon: const Icon(Icons.note),
-                    //   label: const Text("Notes"),
-                    //   style: ElevatedButton.styleFrom(
-                    //     backgroundColor: Colors.blueGrey,
-                    //     shape: RoundedRectangleBorder(
-                    //       borderRadius: BorderRadius.circular(10),
-                    //     ),
-                    //   ),
-                    // ),
+                   
                     ElevatedButton.icon(
                       onPressed: () {
                         Share.share(
@@ -141,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: const Icon(Icons.share),
                       label: const Text("Partager"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: const Color.fromARGB(255, 236, 194, 5),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -156,12 +138,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         law.isFavorite
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        color: Colors.white,
+                        color: const Color.fromARGB(255, 221, 4, 4),
                       ),
                       label: Text(
                           law.isFavorite ? "Retirer" : "Favori"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
+                        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
