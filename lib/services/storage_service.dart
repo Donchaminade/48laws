@@ -144,4 +144,19 @@ class StorageService {
 
     await prefs.setStringList(_lastNotifiedLawsKey, newHistoryStrings);
   }
+
+  // --- TEXT SIZE ---
+
+  static const _textSizeKey = 'textSize';
+  static const double _defaultTextSize = 1.0; // Default scale factor
+
+  static Future<double> getTextSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_textSizeKey) ?? _defaultTextSize;
+  }
+
+  static Future<void> setTextSize(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_textSizeKey, value);
+  }
 }

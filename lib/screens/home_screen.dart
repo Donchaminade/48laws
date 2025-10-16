@@ -112,10 +112,21 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
           ),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return FutureBuilder<bool>(
-                future: StorageService.getNotificationsEnabled(),
+              return FutureBuilder<Map<String, dynamic>>(
+                future: Future.wait([
+                  StorageService.getNotificationsEnabled(),
+                  StorageService.getTextSize(),
+                ]).then((results) => {
+                      'notificationsEnabled': results[0] as bool,
+                      'textSize': results[1] as double,
+                    }),
                 builder: (context, snapshot) {
-                  bool notificationsEnabled = snapshot.data ?? false;
+                  if (!snapshot.hasData) {
+                    return const CircularProgressIndicator();
+                  }
+                  bool notificationsEnabled = snapshot.data!['notificationsEnabled'];
+                  double currentTextSize = snapshot.data!['textSize'];
+
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -137,6 +148,35 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
                           }
                         },
                         activeColor: Colors.amber,
+                      ),
+                      const Divider(color: Colors.white30),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Row(
+                          children: [
+                            const Text(
+                              "Taille du texte :",
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            Expanded(
+                              child: Slider(
+                                value: currentTextSize,
+                                min: 0.8,
+                                max: 1.5,
+                                divisions: 7, // 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5
+                                label: currentTextSize.toStringAsFixed(1),
+                                onChanged: (double newValue) async {
+                                  setState(() {
+                                    currentTextSize = newValue;
+                                  });
+                                  await StorageService.setTextSize(newValue);
+                                },
+                                activeColor: Colors.amber,
+                                inactiveColor: Colors.white30,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       // Autres options ici si nécessaire
                     ],
@@ -164,161 +204,168 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
   void showLawDetails(Law law) {
     showDialog(
       context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent, // Make dialog background transparent
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF232526), Color(0xFF414345)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Loi ${law.numero}",
-                          style: const TextStyle(
-                            color: Color(0xFF8090FF),
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          law.titre,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const Divider(color: Colors.white30, height: 30),
-                        
-                        // Law Text Section
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            law.texte,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 16,
-                              height: 1.5, // Improved line spacing
-                            ),
-                            textAlign: TextAlign.justify,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        // Explanation Section
-                        const Text(
-                          "Explication :",
-                          style: TextStyle(
-                            color: Color(0xFF8090FF),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            law.explication,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 15,
-                              fontStyle: FontStyle.italic,
-                               height: 1.5,
-                            ),
-                            textAlign: TextAlign.justify,
-                          ),
-                        ),
-                        const SizedBox(height: 25),
-                        
-                        // Action Buttons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      builder: (_) => FutureBuilder<double>(
+        future: StorageService.getTextSize(),
+        builder: (context, snapshot) {
+          double textSize = snapshot.data ?? 1.0; // Default to 1.0 if not loaded
+
+          return Dialog(
+            backgroundColor: Colors.transparent, // Make dialog background transparent
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF232526), Color(0xFF414345)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Share.share(
-                                    "Loi ${law.numero} : ${law.titre}\n\n${law.texte}\n\nExplication :\n${law.explication}");
-                              },
-                              icon: const Icon(Icons.share, color: Colors.black),
-                              label: const Text("Partager", style: TextStyle(color: Colors.black)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.amber,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                            Text(
+                              "Loi ${law.numero}",
+                              style: TextStyle(
+                                color: const Color(0xFF8090FF),
+                                fontSize: 28 * textSize, // Apply text size
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Georgia',
                               ),
                             ),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                toggleFav(law);
-                                Navigator.pop(context);
-                              },
-                              icon: Icon(
-                                law.isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: law.isFavorite ? Colors.redAccent : Colors.black,
+                            const SizedBox(height: 10),
+                            Text(
+                              law.titre,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20 * textSize, // Apply text size
+                                fontWeight: FontWeight.w600,
                               ),
-                              label: Text(
-                                  law.isFavorite ? "Retirer" : "Favori", style: TextStyle(color: Colors.black)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              textAlign: TextAlign.center,
+                            ),
+                            const Divider(color: Colors.white30, height: 30),
+                            
+                            // Law Text Section
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                law.texte,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 16 * textSize, // Apply text size
+                                  height: 1.5, // Improved line spacing
                                 ),
-                                 padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                                textAlign: TextAlign.justify,
                               ),
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            // Explanation Section
+                            Text(
+                              "Explication :",
+                              style: TextStyle(
+                                color: const Color(0xFF8090FF),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18 * textSize, // Apply text size
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                               decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                law.explication,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 15 * textSize, // Apply text size
+                                  fontStyle: FontStyle.italic,
+                                   height: 1.5,
+                                ),
+                                textAlign: TextAlign.justify,
+                              ),
+                            ),
+                            const SizedBox(height: 25),
+                            
+                            // Action Buttons
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    Share.share(
+                                        "Loi ${law.numero} : ${law.titre}\n\n${law.texte}\n\nExplication :\n${law.explication}");
+                                  },
+                                  icon: const Icon(Icons.share, color: Colors.black),
+                                  label: const Text("Partager", style: TextStyle(color: Colors.black)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.amber,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    toggleFav(law);
+                                    Navigator.pop(context);
+                                  },
+                                  icon: Icon(
+                                    law.isFavorite
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: law.isFavorite ? Colors.redAccent : Colors.black,
+                                  ),
+                                  label: Text(
+                                      law.isFavorite ? "Retirer" : "Favori", style: TextStyle(color: Colors.black)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                     padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+              ],
             ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
