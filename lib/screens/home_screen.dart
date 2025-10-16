@@ -332,7 +332,21 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
       decoration: InputDecoration(
         hintText: 'Rechercher...',
         hintStyle: const TextStyle(color: Colors.white70),
-        border: InputBorder.none,
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.1), // Optional: subtle fill color
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.amber, width: 2.0), // Highlight on focus
+        ),
       ),
     );
   }
