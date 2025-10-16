@@ -3,7 +3,6 @@ import '../models/law.dart';
 import '../data/laws.dart' show allLaws; // Importer la liste globale allLaws
 import '../services/storage_service.dart';
 import '../widgets/law_card.dart';
-import '../widgets/bottom_nav.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -113,8 +112,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         backgroundColor: const Color.fromARGB(255, 12, 2, 145),
         centerTitle: true,
       ),
-      backgroundColor: Colors.black,
-      bottomNavigationBar: const BottomNav(index: 2),
       body: favoriteLaws.isEmpty
           ? const Center(
               child: Text(

@@ -4,9 +4,8 @@ import 'package:share_plus/share_plus.dart';
 import '../data/laws.dart' show allLaws;
 import '../models/law.dart';
 import '../widgets/law_card.dart';
-import '../widgets/bottom_nav.dart';
 import '../services/storage_service.dart';
-// import '../screens/notes_screen.dart';
+import '../route_observer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,15 +14,38 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
   List<Law> lawsList = [];
   List<Law> display = [];
-  String query = '';
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     loadFavorites();
+    _searchController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didPushNext() {
+    _searchFocusNode.unfocus();
   }
 
   void loadFavorites() async {
@@ -36,9 +58,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void onSearch(String q) {
+  void onSearch(String query) {
     setState(() {
-      query = q.trim();
       display = query.isEmpty
           ? lawsList
           : lawsList.where((l) {
@@ -114,7 +135,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                   
                     ElevatedButton.icon(
                       onPressed: () {
                         Share.share(
@@ -161,57 +181,83 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Les 48 lois du pouvoir',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: () {
+        _searchFocusNode.unfocus();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Les 48 lois du pouvoir',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        backgroundColor: const Color.fromARGB(255, 1, 14, 197),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: TextField(
-              onChanged: onSearch,
-              style: const TextStyle(color: Colors.black),
-              decoration: InputDecoration(
-                hintText: 'Rechercher une loi ou un numéro...',
-                hintStyle:
-                    const TextStyle(color: Colors.grey),
-                prefixIcon:
-                    const Icon(Icons.search, color: Colors.black),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
+          backgroundColor: const Color.fromARGB(255, 1, 14, 197),
+          centerTitle: true,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(70),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: onSearch,
+                  style: const TextStyle(color: Colors.black),
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher une loi ou un numéro...',
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search, color: Colors.black54),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.black54),
+                            onPressed: () {
+                              _searchController.clear();
+                              onSearch('');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-      backgroundColor: Colors.black,
-      bottomNavigationBar: const BottomNav(index: 0),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(10),
-        itemCount: display.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-        ),
-        itemBuilder: (ctx, i) => GestureDetector(
-          onTap: () => showLawDetails(display[i]),
-          child: LawCard(
-            law: display[i],
-            onToggleFav: toggleFav,
+        backgroundColor: Colors.black,
+        body: GridView.builder(
+          padding: const EdgeInsets.all(10),
+          itemCount: display.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+          ),
+          itemBuilder: (ctx, i) => GestureDetector(
+            onTap: () => showLawDetails(display[i]),
+            child: LawCard(
+              law: display[i],
+              onToggleFav: toggleFav,
+            ),
           ),
         ),
       ),

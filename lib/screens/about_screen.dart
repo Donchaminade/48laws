@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -65,7 +64,6 @@ class _AboutScreenState extends State<AboutScreen>
         backgroundColor: const Color.fromARGB(255, 4, 2, 145),
         elevation: 4,
       ),
-      bottomNavigationBar: const BottomNav(index: 2),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

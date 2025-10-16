@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/law.dart';
 import '../services/storage_service.dart';
 import '../data/laws.dart' show allLaws;
-import '../widgets/bottom_nav.dart';
-import '../screens/home_screen.dart'; // Pour le bouton de retour à l'accueil
 
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
@@ -386,18 +384,6 @@ class _NotesScreenState extends State<NotesScreen> {
         backgroundColor: const Color.fromARGB(255, 6, 3, 179),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home, color: Colors.white),
-            tooltip: 'Retour à l\'accueil',
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
-            },
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -489,7 +475,6 @@ class _NotesScreenState extends State<NotesScreen> {
         backgroundColor: const Color.fromARGB(255, 2, 27, 189),
         child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
-      bottomNavigationBar: const BottomNav(index: 1),
     );
   }
 }
