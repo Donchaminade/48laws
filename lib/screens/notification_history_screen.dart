@@ -64,7 +64,9 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
     // Navigate to MainScreen and pass the law number
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => MainScreen(key: ValueKey(law.numero))),
+      MaterialPageRoute(
+        builder: (context) => MainScreen(initialLawNumber: law.numero),
+      ),
     );
   }
 

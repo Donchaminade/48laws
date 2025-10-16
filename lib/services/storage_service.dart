@@ -193,6 +193,35 @@ class StorageService {
   static const _textSizeKey = 'textSize';
   static const double _defaultTextSize = 1.0; // Default scale factor
 
+  static const _currentLawOfTheDayKey = 'currentLawOfTheDay';
+  static const _lawOfTheDayDateKey = 'lawOfTheDayDate';
+
+  static Future<int?> getCurrentLawOfTheDay() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_currentLawOfTheDayKey);
+  }
+
+  static Future<void> setCurrentLawOfTheDay(int lawNumber) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_currentLawOfTheDayKey, lawNumber);
+    await prefs.setString(_lawOfTheDayDateKey, DateTime.now().toIso8601String());
+  }
+
+  static Future<DateTime?> getLawOfTheDayDate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dateString = prefs.getString(_lawOfTheDayDateKey);
+    if (dateString != null) {
+      return DateTime.parse(dateString);
+    }
+    return null;
+  }
+
+  static Future<void> clearCurrentLawOfTheDay() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_currentLawOfTheDayKey);
+    await prefs.remove(_lawOfTheDayDateKey);
+  }
+
   static Future<double> getTextSize() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getDouble(_textSizeKey) ?? _defaultTextSize;

@@ -6,8 +6,10 @@ import 'about_screen.dart';
 import 'notification_history_screen.dart'; // Import the new screen
 import '../widgets/bottom_nav.dart';
 
+final GlobalKey<HomeScreenState> homeScreenKey = GlobalKey<HomeScreenState>();
+
 class MainScreen extends StatefulWidget {
-  final int? initialLawNumber; // Add initialLawNumber to MainScreen
+  final int? initialLawNumber;
   const MainScreen({super.key, this.initialLawNumber});
 
   @override
@@ -18,22 +20,21 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const NotesScreen(),
-    const FavoritesScreen(),
-    const AboutScreen(),
-  ];
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    _screens = [
+      HomeScreen(key: homeScreenKey, initialLawNumber: widget.initialLawNumber), // Pass key and initialLawNumber
+      const NotesScreen(),
+      const FavoritesScreen(),
+      const AboutScreen(),
+    ];
+
     if (widget.initialLawNumber != null) {
-      // If an initial law number is provided, navigate to HomeScreen and show details
       _currentIndex = 0; // Ensure HomeScreen is selected
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // This ensures the HomeScreen is built before trying to show details
-        // The HomeScreen itself will handle showing the law details based on initialLawNumber
         _pageController.jumpToPage(_currentIndex);
       });
     }

@@ -14,10 +14,10 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialLawNumber}); // Update constructor
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerProviderStateMixin {
+class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerProviderStateMixin {
   AnimationController? _logoRotationController;
   List<Law> lawsList = [];
   List<Law> display = [];
@@ -39,19 +39,36 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
 
     // Check for initialLawNumber and show details
     if (widget.initialLawNumber != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Law? foundLaw;
-        for (var l in allLaws) {
-          if (l.numero == widget.initialLawNumber) {
-            foundLaw = l;
-            break;
-          }
-        }
-        if (foundLaw != null) {
-          showLawDetails(foundLaw);
-        }
-      });
+      _showLawDetailsFromInitialNumber(widget.initialLawNumber!);
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialLawNumber != oldWidget.initialLawNumber && widget.initialLawNumber != null) {
+      _showLawDetailsFromInitialNumber(widget.initialLawNumber!);
+    }
+  }
+
+  void _showLawDetailsFromInitialNumber(int lawNumber) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Law? foundLaw;
+      for (var l in allLaws) {
+        if (l.numero == lawNumber) {
+          foundLaw = l;
+          break;
+        }
+      }
+      if (foundLaw != null) {
+        showLawDetails(foundLaw);
+      }
+    });
+  }
+
+  // Public method to show law details from outside
+  void showLawDetailsFromOutside(Law law) {
+    showLawDetails(law);
   }
 
   @override

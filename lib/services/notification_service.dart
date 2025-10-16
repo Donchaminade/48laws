@@ -79,9 +79,34 @@ class NotificationService {
   }
 
   Future<Law> _selectLawOfTheDay() async {
+    final DateTime now = DateTime.now();
+    final DateTime? lastSelectedDate = await StorageService.getLawOfTheDayDate();
+    final int? lastSelectedLawNumber = await StorageService.getCurrentLawOfTheDay();
+
+    // Check if a law was already selected for today
+    if (lastSelectedDate != null &&
+        lastSelectedLawNumber != null &&
+        lastSelectedDate.year == now.year &&
+        lastSelectedDate.month == now.month &&
+        lastSelectedDate.day == now.day) {
+      // Return the already selected law for today
+      Law? existingLaw;
+      for (var l in allLaws) {
+        if (l.numero == lastSelectedLawNumber) {
+          existingLaw = l;
+          break;
+        }
+      }
+      if (existingLaw != null) {
+        print('Returning already selected Law of the Day: ${existingLaw.numero}');
+        return existingLaw;
+      }
+    }
+
+    // If no law was selected for today, or if it's a new day, select a new one
     final List<Law> allAvailableLaws = allLaws;
     final Map<int, List<DateTime>> history = await StorageService.getNotifiedLawsHistory();
-    final DateTime sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+    final DateTime sevenDaysAgo = now.subtract(const Duration(days: 7));
 
     // Filter out laws that have been notified more than twice in the last 7 days
     final List<Law> eligibleLaws = allAvailableLaws.where((law) {
@@ -99,6 +124,10 @@ class NotificationService {
       final _random = Random();
       selectedLaw = allAvailableLaws[_random.nextInt(allAvailableLaws.length)];
     }
+
+    // Store the newly selected law as the Law of the Day for today
+    await StorageService.setCurrentLawOfTheDay(selectedLaw.numero);
+    print('Selected new Law of the Day: ${selectedLaw.numero}');
 
     await StorageService.addNotifiedLawToHistory(selectedLaw.numero);
     return selectedLaw;
@@ -134,7 +163,6 @@ class NotificationService {
             presentSound: true,
           ),
         ),
-        
         androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
