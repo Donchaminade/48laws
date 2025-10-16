@@ -19,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   List<Law> display = [];
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  bool _isSearchVisible = false;
 
   @override
   void initState() {
@@ -179,6 +180,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchController,
+      focusNode: _searchFocusNode,
+      onChanged: onSearch,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: 'Rechercher...',
+        hintStyle: const TextStyle(color: Colors.white70),
+        border: InputBorder.none,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -187,61 +202,38 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'Les 48 lois du pouvoir',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+          leading: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Image.asset('assets/images/logo3.png'),
           ),
+          title: _isSearchVisible
+              ? _buildSearchField()
+              : const Text(
+                  'Les 48 lois du pouvoir',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+          actions: [
+            IconButton(
+              icon: Icon(_isSearchVisible ? Icons.close : Icons.search),
+              onPressed: () {
+                setState(() {
+                  _isSearchVisible = !_isSearchVisible;
+                  if (_isSearchVisible) {
+                    _searchFocusNode.requestFocus();
+                  } else {
+                    _searchController.clear();
+                    onSearch('');
+                  }
+                });
+              },
+            ),
+          ],
           backgroundColor: const Color.fromARGB(255, 1, 14, 197),
           centerTitle: true,
           systemOverlayStyle: SystemUiOverlayStyle.light,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(70),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  onChanged: onSearch,
-                  style: const TextStyle(color: Colors.black),
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher une loi ou un numéro...',
-                    hintStyle: const TextStyle(color: Colors.grey),
-                    prefixIcon: const Icon(Icons.search, color: Colors.black54),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.black54),
-                            onPressed: () {
-                              _searchController.clear();
-                              onSearch('');
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
         backgroundColor: Colors.black,
         body: GridView.builder(
