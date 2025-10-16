@@ -251,30 +251,36 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
 
           return Dialog(
             backgroundColor: Colors.transparent, // Make dialog background transparent
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: Stack(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF232526), Color(0xFF414345)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)), // Remove border radius for full screen effect
+            insetPadding: EdgeInsets.zero, // Remove default dialog padding
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: double.infinity, // Take full width
+                maxHeight: double.infinity, // Take full height
+              ),
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(0), // Remove border radius for full screen effect
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF232526), Color(0xFF414345)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 0, // Remove border
+                      ),
                     ),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(0), // Remove border radius for full screen effect
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                             Text(
                               "Loi ${law.numero}",
                               style: TextStyle(
@@ -404,10 +410,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
                 ),
               ],
             ),
-          );
-        },
-      ),
+          )
+        );
+      },
+      )
     );
+
+
   }
 
   Widget _buildSearchField() {
@@ -490,6 +499,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
               future: StorageService.getUnreadNotifications(),
               builder: (context, snapshot) {
                 final int unreadCount = snapshot.data?.length ?? 0;
+                print('Unread notifications count: $unreadCount');
                 return Stack(
                   children: [
                     IconButton(

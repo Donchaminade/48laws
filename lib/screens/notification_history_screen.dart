@@ -24,6 +24,7 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
 
   Future<void> _markAllNotificationsAsRead() async {
     await StorageService.clearUnreadNotifications();
+    print('All unread notifications cleared.');
   }
 
   Future<void> _loadNotificationHistory() async {

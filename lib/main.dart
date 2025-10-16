@@ -2,10 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:fohuit_lois/services/notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'route_observer.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // Import for FlutterLocalNotificationsPlugin
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService().init();
+
+  // Request notification permissions
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      ?.requestNotificationsPermission();
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+      ?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
   runApp(const MyApp());
 }
 

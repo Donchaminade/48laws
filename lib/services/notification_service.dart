@@ -47,8 +47,10 @@ class NotificationService {
 
   void onDidReceiveNotificationResponse(NotificationResponse notificationResponse) async {
     final String? payload = notificationResponse.payload;
+    print('Notification payload received: $payload');
     if (payload != null && payload.isNotEmpty) {
       final int? lawNumber = int.tryParse(payload);
+      print('Parsed law number from payload: $lawNumber');
       if (lawNumber != null) {
         Law? law;
         for (var l in allLaws) {
@@ -59,13 +61,20 @@ class NotificationService {
         }
 
         if (law != null) {
+          print('Navigating to HomeScreen with initialLawNumber: $lawNumber');
           navigatorKey.currentState?.pushReplacement(
             MaterialPageRoute(
               builder: (context) => HomeScreen(initialLawNumber: lawNumber),
             ),
           );
+        } else {
+          print('Law not found for law number: $lawNumber');
         }
+      } else {
+        print('Failed to parse law number from payload.');
       }
+    } else {
+      print('Notification payload is null or empty.');
     }
   }
 
@@ -115,6 +124,9 @@ class NotificationService {
             ticker: 'Loi du jour',
             largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'), // Add app logo as large icon
             styleInformation: BigTextStyleInformation(''), // Pour un texte plus long
+            enableVibration: true, // Activer la vibration
+            playSound: true, // Activer le son
+            sound: RawResourceAndroidNotificationSound(null), // Utiliser le son par défaut du système
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
@@ -122,6 +134,7 @@ class NotificationService {
             presentSound: true,
           ),
         ),
+        
         androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
@@ -130,6 +143,7 @@ class NotificationService {
 
     // Add the notified law to the unread list
     await StorageService.addUnreadNotification(lawOfTheDay.numero);
+    print('Notification for Law ${lawOfTheDay.numero} scheduled and added to unread.');
   }
 
   Future<tz.TZDateTime> _nextInstanceOfScheduledTime() async {
