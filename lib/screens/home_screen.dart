@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fohuit_lois/screens/notification_history_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../data/laws.dart' show allLaws;
 import '../models/law.dart';
@@ -116,9 +117,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
                 future: Future.wait([
                   StorageService.getNotificationsEnabled(),
                   StorageService.getTextSize(),
+                  StorageService.getNotificationTimeHour(),
+                  StorageService.getNotificationTimeMinute(),
                 ]).then((results) => {
                       'notificationsEnabled': results[0] as bool,
                       'textSize': results[1] as double,
+                      'notificationHour': results[2] as int,
+                      'notificationMinute': results[3] as int,
                     }),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
@@ -126,6 +131,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
                   }
                   bool notificationsEnabled = snapshot.data!['notificationsEnabled'];
                   double currentTextSize = snapshot.data!['textSize'];
+                  int notificationHour = snapshot.data!['notificationHour'];
+                  int notificationMinute = snapshot.data!['notificationMinute'];
 
                   return Column(
                     mainAxisSize: MainAxisSize.min,
@@ -148,6 +155,39 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
                           }
                         },
                         activeColor: Colors.amber,
+                      ),
+                      ListTile(
+                        title: const Text(
+                          "Heure de notification",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        trailing: Text(
+                          '${notificationHour.toString().padLeft(2, '0')}:${notificationMinute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(color: Colors.amber, fontSize: 16),
+                        ),
+                        onTap: () async {
+                          final TimeOfDay? picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay(hour: notificationHour, minute: notificationMinute),
+                            builder: (BuildContext context, Widget? child) {
+                              return MediaQuery(
+                                data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              notificationHour = picked.hour;
+                              notificationMinute = picked.minute;
+                            });
+                            await StorageService.setNotificationTimeHour(picked.hour);
+                            await StorageService.setNotificationTimeMinute(picked.minute);
+                            if (notificationsEnabled) {
+                              NotificationService().scheduleDailyLawNotification();
+                            }
+                          }
+                        },
                       ),
                       const Divider(color: Colors.white30),
                       Padding(
@@ -446,6 +486,51 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
                   ),
                 ),
           actions: [
+            FutureBuilder<List<int>>(
+              future: StorageService.getUnreadNotifications(),
+              builder: (context, snapshot) {
+                final int unreadCount = snapshot.data?.length ?? 0;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_none, color: Colors.white),
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotificationHistoryScreen()),
+                        );
+                        // Refresh unread count after returning from history screen
+                        setState(() {});
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 11,
+                        top: 11,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 14,
+                            minHeight: 14,
+                          ),
+                          child: Text(
+                            '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                  ],
+                );
+              },
+            ),
             IconButton(
               icon: Icon(_isSearchVisible ? Icons.close : Icons.search),
               onPressed: () {

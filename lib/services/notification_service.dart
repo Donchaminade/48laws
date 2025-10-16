@@ -104,7 +104,7 @@ class NotificationService {
         0, // Notification ID
         'Loi du jour : ${lawOfTheDay.numero}',
         lawOfTheDay.titre,
-        _nextInstanceOfEightAM(),
+        await _nextInstanceOfScheduledTime(),
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_law_channel',
@@ -127,12 +127,18 @@ class NotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time, // Répéter chaque jour à la même heure
         payload: lawOfTheDay.numero.toString()); // Store law number in payload
+
+    // Add the notified law to the unread list
+    await StorageService.addUnreadNotification(lawOfTheDay.numero);
   }
 
-  tz.TZDateTime _nextInstanceOfEightAM() {
+  Future<tz.TZDateTime> _nextInstanceOfScheduledTime() async {
+    final int hour = await StorageService.getNotificationTimeHour();
+    final int minute = await StorageService.getNotificationTimeMinute();
+
     tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, 8, 0, 0); // 8 AM
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute, 0);
 
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));

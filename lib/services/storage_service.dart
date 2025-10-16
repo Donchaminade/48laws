@@ -78,6 +78,8 @@ class StorageService {
   // --- NOTIFICATIONS ---
 
   static const _notificationsEnabledKey = 'notificationsEnabled';
+  static const _notificationTimeHourKey = 'notificationTimeHour';
+  static const _notificationTimeMinuteKey = 'notificationTimeMinute';
 
   static Future<bool> getNotificationsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -87,6 +89,47 @@ class StorageService {
   static Future<void> setNotificationsEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_notificationsEnabledKey, value);
+  }
+
+  static Future<int> getNotificationTimeHour() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_notificationTimeHourKey) ?? 8; // Default to 8 AM
+  }
+
+  static Future<void> setNotificationTimeHour(int hour) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_notificationTimeHourKey, hour);
+  }
+
+  static Future<int> getNotificationTimeMinute() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_notificationTimeMinuteKey) ?? 0; // Default to 0 minutes
+  }
+
+  static Future<void> setNotificationTimeMinute(int minute) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notificationsEnabledKey, true); // Enable notifications if time is set
+  }
+
+  static const _unreadNotificationsKey = 'unreadNotifications'; // Stores a list of law numbers that are unread
+
+  static Future<List<int>> getUnreadNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_unreadNotificationsKey)?.map(int.parse).toList() ?? [];
+  }
+
+  static Future<void> addUnreadNotification(int lawNumber) async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<int> unread = await getUnreadNotifications();
+    if (!unread.contains(lawNumber)) {
+      unread.add(lawNumber);
+      await prefs.setStringList(_unreadNotificationsKey, unread.map((e) => e.toString()).toList());
+    }
+  }
+
+  static Future<void> clearUnreadNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_unreadNotificationsKey);
   }
 
   static const _lastNotifiedLawsKey = 'lastNotifiedLaws'; // Stores a list of "lawNumber:timestamp"

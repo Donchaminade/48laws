@@ -19,6 +19,11 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
   void initState() {
     super.initState();
     _loadNotificationHistory();
+    _markAllNotificationsAsRead();
+  }
+
+  Future<void> _markAllNotificationsAsRead() async {
+    await StorageService.clearUnreadNotifications();
   }
 
   Future<void> _loadNotificationHistory() async {

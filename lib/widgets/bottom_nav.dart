@@ -69,7 +69,13 @@ class _BottomNavState extends State<BottomNav> {
         children: [
           _navItem(context, Icons.book, "Lois", 0),
           _navItem(context, Icons.note_alt, "Notes", 1, badge: notesCount),
-          _navItem(context, Icons.favorite, "Favoris", 2, badge: favoritesCount),
+          _navItem(
+            context,
+            Icons.favorite,
+            "Favoris",
+            2,
+            badge: favoritesCount,
+          ),
           _navItem(context, Icons.info_outline, "À Propos", 3),
         ],
       ),
@@ -111,16 +117,10 @@ class _BottomNavState extends State<BottomNav> {
                   color: Colors.red,
                   shape: BoxShape.circle,
                 ),
-                constraints: const BoxConstraints(
-                  minWidth: 16,
-                  minHeight: 16,
-                ),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                 child: Text(
                   '$badge',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
                   textAlign: TextAlign.center,
                 ),
               ),
