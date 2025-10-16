@@ -19,6 +19,9 @@ dependencies:
   shared_preferences: ^2.2.2
   lucide_icons: ^0.257.0 # Replace with the latest version of lucide_icons
   url_launcher: ^6.2.6
+  flutter_local_notifications: ^17.2.1+1
+  timezone: ^0.9.4
+  http: ^1.2.1
 
 dev_dependencies:
   flutter_test:

@@ -6,9 +6,11 @@ import '../models/law.dart';
 import '../widgets/law_card.dart';
 import '../services/storage_service.dart';
 import '../route_observer.dart';
+import '../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int? initialLawNumber; // New optional parameter
+  const HomeScreen({super.key, this.initialLawNumber}); // Update constructor
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -33,6 +35,22 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
     _searchController.addListener(() {
       setState(() {});
     });
+
+    // Check for initialLawNumber and show details
+    if (widget.initialLawNumber != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Law? foundLaw;
+        for (var l in allLaws) {
+          if (l.numero == widget.initialLawNumber) {
+            foundLaw = l;
+            break;
+          }
+        }
+        if (foundLaw != null) {
+          showLawDetails(foundLaw);
+        }
+      });
+    }
   }
 
   @override
@@ -79,6 +97,68 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
   void toggleFav(Law law) async {
     await StorageService.toggleFavorite(law.numero);
     loadFavorites();
+  }
+
+  void _showNotificationOptionsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            "Options de notification",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return FutureBuilder<bool>(
+                future: StorageService.getNotificationsEnabled(),
+                builder: (context, snapshot) {
+                  bool notificationsEnabled = snapshot.data ?? false;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SwitchListTile(
+                        title: const Text(
+                          "Notifications quotidiennes",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        value: notificationsEnabled,
+                        onChanged: (bool newValue) async {
+                          setState(() {
+                            notificationsEnabled = newValue;
+                          });
+                          await StorageService.setNotificationsEnabled(newValue);
+                          if (newValue) {
+                            NotificationService().scheduleDailyLawNotification();
+                          } else {
+                            NotificationService().cancelAllNotifications();
+                          }
+                        },
+                        activeColor: Colors.amber,
+                      ),
+                      // Autres options ici si nécessaire
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                "Fermer",
+                style: TextStyle(color: Color(0xFF8090FF)),
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void showLawDetails(Law law) {
@@ -265,32 +345,35 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPr
       },
       child: Scaffold(
         appBar: AppBar(
-          leading: Builder(
-            builder: (context) {
-              final logoWidget = Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 2.0,
-                    ),
-                    image: const DecorationImage(
-                      fit: BoxFit.cover,
-                      image: AssetImage('assets/images/logo3.png'),
+          leading: GestureDetector(
+            onTap: () => _showNotificationOptionsDialog(context),
+            child: Builder(
+              builder: (context) {
+                final logoWidget = Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 2.0,
+                      ),
+                      image: const DecorationImage(
+                        fit: BoxFit.cover,
+                        image: AssetImage('assets/images/logo3.png'),
+                      ),
                     ),
                   ),
-                ),
-              );
-              if (_logoRotationController == null) {
-                return logoWidget;
+                );
+                if (_logoRotationController == null) {
+                  return logoWidget;
+                }
+                return RotationTransition(
+                  turns: _logoRotationController!,
+                  child: logoWidget,
+                );
               }
-              return RotationTransition(
-                turns: _logoRotationController!,
-                child: logoWidget,
-              );
-            }
+            ),
           ),
           title: _isSearchVisible
               ? _buildSearchField()
