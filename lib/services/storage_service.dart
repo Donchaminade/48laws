@@ -145,6 +145,7 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     final List<String> historyStrings = prefs.getStringList(_lastNotifiedLawsKey) ?? [];
     final Map<int, List<DateTime>> history = {};
+    final DateTime threeDaysAgo = DateTime.now().subtract(const Duration(days: 3));
 
     for (String entry in historyStrings) {
       final parts = entry.split(':');
@@ -153,40 +154,48 @@ class StorageService {
         final int timestamp = int.tryParse(parts[1]) ?? -1;
         if (lawNumber != -1 && timestamp != -1) {
           final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-          history.update(lawNumber, (list) => list..add(dateTime),
-              ifAbsent: () => [dateTime]);
+          if (dateTime.isAfter(threeDaysAgo)) {
+            history.update(lawNumber, (list) => list..add(dateTime),
+                ifAbsent: () => [dateTime]);
+          }
         }
       }
     }
     return history;
   }
 
-  // Adds a law to the notification history with the current timestamp
-  // Cleans up old entries (older than 7 days)
   static Future<void> addNotifiedLawToHistory(int lawNumber) async {
     final prefs = await SharedPreferences.getInstance();
     final Map<int, List<DateTime>> currentHistory = await getNotifiedLawsHistory();
     final DateTime now = DateTime.now();
-    final DateTime sevenDaysAgo = now.subtract(const Duration(days: 7));
 
-    // Add current notification
-    currentHistory.update(lawNumber, (list) => list..add(now),
-        ifAbsent: () => [now]);
+    currentHistory.update(lawNumber, (list) => list..add(now), ifAbsent: () => [now]);
 
-    // Clean up old entries
-    final Map<int, List<DateTime>> cleanedHistory = {};
+    final List<String> newHistoryStrings = [];
     currentHistory.forEach((num, dates) {
-      final List<DateTime> recentDates = dates.where((date) => date.isAfter(sevenDaysAgo)).toList();
-      if (recentDates.isNotEmpty) {
-        cleanedHistory[num] = recentDates;
+      for (DateTime date in dates) {
+        newHistoryStrings.add('$num:${date.millisecondsSinceEpoch}');
       }
     });
 
-    // Convert back to list of strings for SharedPreferences
+    await prefs.setStringList(_lastNotifiedLawsKey, newHistoryStrings);
+  }
+
+  static Future<void> deleteNotificationFromHistory(int lawNumber, DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final Map<int, List<DateTime>> currentHistory = await getNotifiedLawsHistory();
+
+    if (currentHistory.containsKey(lawNumber)) {
+      currentHistory[lawNumber]!.removeWhere((d) => d.isAtSameMomentAs(date));
+      if (currentHistory[lawNumber]!.isEmpty) {
+        currentHistory.remove(lawNumber);
+      }
+    }
+
     final List<String> newHistoryStrings = [];
-    cleanedHistory.forEach((num, dates) {
-      for (DateTime date in dates) {
-        newHistoryStrings.add('$num:${date.millisecondsSinceEpoch}');
+    currentHistory.forEach((num, dates) {
+      for (DateTime d in dates) {
+        newHistoryStrings.add('$num:${d.millisecondsSinceEpoch}');
       }
     });
 
