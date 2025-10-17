@@ -78,7 +78,48 @@ class NotificationService {
     }
   }
 
-  Future<Law> _selectLawOfTheDay() async {
+  Future<void> scheduleDailyLawNotification() async {
+    await flutterLocalNotificationsPlugin.cancelAll(); // Annule toutes les notifications existantes
+
+    final Law lawToNotify = await _getOrCreateLawOfTheDay(); // Obtient ou crée la loi du jour
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+        0, // Notification ID
+        'Loi du jour : ${lawToNotify.numero}',
+        lawToNotify.titre,
+        await _nextInstanceOfScheduledTime(),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_law_channel',
+            'Lois du Jour',
+            channelDescription: 'Notifications quotidiennes des lois du pouvoir',
+            importance: Importance.max,
+            priority: Priority.high,
+            ticker: 'Loi du jour',
+            largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'), // Add app logo as large icon
+            styleInformation: BigTextStyleInformation(''), // Pour un texte plus long
+            enableVibration: true, // Activer la vibration
+            playSound: true, // Activer le son
+            sound: RawResourceAndroidNotificationSound(null), // Utiliser le son par défaut du système
+            ongoing: true, // Rendre la notification persistante
+            autoCancel: false, // Ne pas annuler automatiquement au clic
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        androidAllowWhileIdle: true,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time, // Répéter chaque jour à la même heure
+        payload: lawToNotify.numero.toString()); // Store law number in payload
+
+    print('Notification for Law ${lawToNotify.numero} scheduled.');
+  }
+
+  Future<Law> _getOrCreateLawOfTheDay() async {
     final DateTime now = DateTime.now();
     final DateTime? lastSelectedDate = await StorageService.getLawOfTheDayDate();
     final int? lastSelectedLawNumber = await StorageService.getCurrentLawOfTheDay();
@@ -127,51 +168,12 @@ class NotificationService {
 
     // Store the newly selected law as the Law of the Day for today
     await StorageService.setCurrentLawOfTheDay(selectedLaw.numero);
-    print('Selected new Law of the Day: ${selectedLaw.numero}');
-
+    // Add to history and unread only when a NEW law is selected for the day
     await StorageService.addNotifiedLawToHistory(selectedLaw.numero);
+    await StorageService.addUnreadNotification(selectedLaw.numero);
+    print('Selected new Law of the Day: ${selectedLaw.numero} and added to history/unread.');
+
     return selectedLaw;
-  }
-
-  Future<void> scheduleDailyLawNotification() async {
-    await flutterLocalNotificationsPlugin.cancelAll(); // Cancel any existing daily notification
-
-    final Law lawOfTheDay = await _selectLawOfTheDay();
-
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-        0, // Notification ID
-        'Loi du jour : ${lawOfTheDay.numero}',
-        lawOfTheDay.titre,
-        await _nextInstanceOfScheduledTime(),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'daily_law_channel',
-            'Lois du Jour',
-            channelDescription: 'Notifications quotidiennes des lois du pouvoir',
-            importance: Importance.max,
-            priority: Priority.high,
-            ticker: 'Loi du jour',
-            largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'), // Add app logo as large icon
-            styleInformation: BigTextStyleInformation(''), // Pour un texte plus long
-            enableVibration: true, // Activer la vibration
-            playSound: true, // Activer le son
-            sound: RawResourceAndroidNotificationSound(null), // Utiliser le son par défaut du système
-          ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        androidAllowWhileIdle: true,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time, // Répéter chaque jour à la même heure
-        payload: lawOfTheDay.numero.toString()); // Store law number in payload
-
-    // Add the notified law to the unread list
-    await StorageService.addUnreadNotification(lawOfTheDay.numero);
-    print('Notification for Law ${lawOfTheDay.numero} scheduled and added to unread.');
   }
 
   Future<tz.TZDateTime> _nextInstanceOfScheduledTime() async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fohuit_lois/screens/main_screen.dart';
 import 'package:fohuit_lois/services/notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'route_observer.dart';
@@ -21,13 +22,27 @@ Future<void> main() async {
         sound: true,
       );
 
-  runApp(const MyApp());
+  // Handle notification launch
+  final NotificationAppLaunchDetails? notificationAppLaunchDetails = await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+  String? initialRoute;
+  if (notificationAppLaunchDetails?.didNotificationLaunchApp ?? false) {
+    final String? payload = notificationAppLaunchDetails!.notificationResponse?.payload;
+    if (payload != null && payload.isNotEmpty) {
+      final int? lawNumber = int.tryParse(payload);
+      if (lawNumber != null) {
+        initialRoute = '/home?lawNumber=$lawNumber'; // Custom route for deep linking
+      }
+    }
+  }
+
+  runApp(MyApp(initialRoute: initialRoute));
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String? initialRoute;
+  const MyApp({super.key, this.initialRoute});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -47,8 +62,20 @@ class MyApp extends StatelessWidget {
           titleTextStyle: TextStyle(color: Color.fromARGB(255, 243, 242, 241), fontSize: 20),
         ),
       ),
-      home: const SplashScreen(),
+      home: initialRoute != null ? _handleInitialRoute(initialRoute!) : const SplashScreen(),
       navigatorObservers: [routeObserver],
     );
   }
+
+  Widget _handleInitialRoute(String route) {
+    final uri = Uri.parse(route);
+    if (uri.path == '/home') {
+      final lawNumber = int.tryParse(uri.queryParameters['lawNumber'] ?? '');
+      if (lawNumber != null) {
+        return MainScreen(initialLawNumber: lawNumber);
+      }
+    }
+    return const SplashScreen(); // Fallback
+  }
 }
+
