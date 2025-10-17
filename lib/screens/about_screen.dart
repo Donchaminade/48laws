@@ -72,7 +72,7 @@ class _AboutScreenState extends State<AboutScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('À Propos'),
-        backgroundColor: const Color.fromARGB(255, 247, 247, 250),
+        backgroundColor: const Color.fromARGB(255, 1, 1, 156),
         elevation: 4,
       ),
       body: Container(

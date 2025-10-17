@@ -23,6 +23,11 @@ class StorageService {
     await prefs.setStringList(_favKey, favs.map((e) => e.toString()).toList());
   }
 
+  static Future<void> clearFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_favKey);
+  }
+
   // Cette méthode est spécifiquement pour le BottomNav pour obtenir le compte des favoris
   static Future<List<int>> getAllFavoriteLaws() async {
     return await getFavorites();
@@ -108,7 +113,7 @@ class StorageService {
 
   static Future<void> setNotificationTimeMinute(int minute) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_notificationsEnabledKey, true); // Enable notifications if time is set
+    await prefs.setInt(_notificationTimeMinuteKey, minute);
   }
 
   static const _unreadNotificationsKey = 'unreadNotifications'; // Stores a list of law numbers that are unread

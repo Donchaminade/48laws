@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:fohuit_lois/screens/notification_history_screen.dart';
 import 'package:fohuit_lois/services/logger_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:share_plus/share_plus.dart';
 import '../data/laws.dart' show allLaws;
@@ -21,6 +24,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerProviderStateMixin {
+  final GlobalKey _logoKey = GlobalKey();
   AnimationController? _logoRotationController;
   List<Law> lawsList = [];
   List<Law> display = [];
@@ -40,11 +44,26 @@ class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPro
       setState(() {});
     });
 
+    _checkAndShowOnboarding();
+
     // Check for initialLawNumber and show details
     if (widget.initialLawNumber != null) {
       _showLawDetailsFromInitialNumber(widget.initialLawNumber!);
     }
   }
+
+  Future<void> _checkAndShowOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
+
+    if (!hasSeenOnboarding) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ShowCaseWidget.of(context).startShowCase([_logoKey]);
+        prefs.setBool('hasSeenOnboarding', true);
+      });
+    }
+  }
+
 
   @override
   void didUpdateWidget(covariant HomeScreen oldWidget) {
@@ -120,6 +139,8 @@ class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPro
     loadFavorites();
   }
 
+  
+
   void _showNotificationOptionsDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -128,186 +149,236 @@ class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPro
           backgroundColor: const Color(0xFF1A1A1A),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text(
-            "Options de notification",
+            "Paramètres",
+            textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return FutureBuilder<Map<String, dynamic>>(
-                future: Future.wait([
-                  StorageService.getNotificationsEnabled(),
-                  StorageService.getTextSize(),
-                  StorageService.getNotificationTimeHour(),
-                  StorageService.getNotificationTimeMinute(),
-                ]).then((results) => {
-                      'notificationsEnabled': results[0] as bool,
-                      'textSize': results[1] as double,
-                      'notificationHour': results[2] as int,
-                      'notificationMinute': results[3] as int,
-                    }),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const CircularProgressIndicator();
-                  }
-                  bool notificationsEnabled = snapshot.data!['notificationsEnabled'];
-                  double currentTextSize = snapshot.data!['textSize'];
-                  int notificationHour = snapshot.data!['notificationHour'];
-                  int notificationMinute = snapshot.data!['notificationMinute'];
-
-                  String getNextNotificationTimeString(int hour, int minute) {
-                    final now = DateTime.now();
-                    var scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
-                    if (scheduledDate.isBefore(now)) {
-                      scheduledDate = scheduledDate.add(const Duration(days: 1));
-                      return 'Demain à ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
-                    } else {
-                      return 'Aujourd\'hui à ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: StatefulBuilder(
+              builder: (BuildContext context, StateSetter setState) {
+                return FutureBuilder<Map<String, dynamic>>(
+                  future: Future.wait([
+                    StorageService.getNotificationsEnabled(),
+                    StorageService.getTextSize(),
+                    StorageService.getNotificationTimeHour(),
+                    StorageService.getNotificationTimeMinute(),
+                  ]).then((results) => {
+                        'notificationsEnabled': results[0] as bool,
+                        'textSize': results[1] as double,
+                        'notificationHour': results[2] as int,
+                        'notificationMinute': results[3] as int,
+                      }),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
                     }
-                  }
+                    bool notificationsEnabled = snapshot.data!['notificationsEnabled'];
+                    double currentTextSize = snapshot.data!['textSize'];
+                    int notificationHour = snapshot.data!['notificationHour'];
+                    int notificationMinute = snapshot.data!['notificationMinute'];
 
-                  void _handleNotificationSwitch(bool newValue) async {
-                    if (newValue) {
-                      final status = await Permission.notification.status;
-                      bool permissionGranted = status.isGranted;
-
-                      if (status.isDenied) {
-                        final bool? rationaleAccepted = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Permission de notification'),
-                            content: const Text('Pour recevoir la loi du jour, veuillez autoriser les notifications.'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
-                                child: const Text('Ne pas autoriser'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(true),
-                                child: const Text('Autoriser'),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        if (rationaleAccepted == true) {
-                          final newStatus = await Permission.notification.request();
-                          permissionGranted = newStatus.isGranted;
-                        }
-                      } else if (status.isPermanentlyDenied) {
-                        await openAppSettings();
-                        permissionGranted = (await Permission.notification.status).isGranted;
-                      }
-
-                      if (permissionGranted) {
-                        setState(() {
-                          notificationsEnabled = true;
-                        });
-                        await StorageService.setNotificationsEnabled(true);
-                        NotificationService().scheduleDailyLawNotification();
+                    String getNextNotificationTimeString(int hour, int minute) {
+                      final now = DateTime.now();
+                      var scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
+                      if (scheduledDate.isBefore(now)) {
+                        scheduledDate = scheduledDate.add(const Duration(days: 1));
+                        return 'Demain à ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
                       } else {
+                        return 'Aujourd\'hui à ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+                      }
+                    }
+
+                    void _handleNotificationSwitch(bool newValue) async {
+                      if (newValue) {
+                        final status = await Permission.notification.status;
+                        bool permissionGranted = status.isGranted;
+
+                        if (status.isDenied) {
+                          final bool? rationaleAccepted = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Permission de notification'),
+                              content: const Text('Pour recevoir la loi du jour, veuillez autoriser les notifications.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: const Text('Ne pas autoriser'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text('Autoriser'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (rationaleAccepted == true) {
+                            final newStatus = await Permission.notification.request();
+                            permissionGranted = newStatus.isGranted;
+                          }
+                        } else if (status.isPermanentlyDenied) {
+                          await openAppSettings();
+                          permissionGranted = (await Permission.notification.status).isGranted;
+                        }
+
+                        if (permissionGranted) {
+                          setState(() {
+                            notificationsEnabled = true;
+                          });
+                          await StorageService.setNotificationsEnabled(true);
+                          NotificationService().scheduleDailyLawNotification();
+                        } else {
+                          setState(() {
+                            notificationsEnabled = false;
+                          });
+                          await StorageService.setNotificationsEnabled(false);
+                        }
+                      }
+                      else {
                         setState(() {
                           notificationsEnabled = false;
                         });
                         await StorageService.setNotificationsEnabled(false);
+                        NotificationService().cancelAllNotifications();
                       }
-                    } else {
-                      setState(() {
-                        notificationsEnabled = false;
-                      });
-                      await StorageService.setNotificationsEnabled(false);
-                      NotificationService().cancelAllNotifications();
                     }
-                  }
 
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SwitchListTile(
-                        title: const Text(
-                          "Notifications quotidiennes",
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                        value: notificationsEnabled,
-                        onChanged: _handleNotificationSwitch,
-                        activeColor: Colors.amber,
-                      ),
-                      ListTile(
-                        title: const Text(
-                          "Heure de notification",
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                        trailing: Text(
-                          '${notificationHour.toString().padLeft(2, '0')}:${notificationMinute.toString().padLeft(2, '0')}',
-                          style: const TextStyle(color: Colors.amber, fontSize: 16),
-                        ),
-                        onTap: () async {
-                          final TimeOfDay? picked = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay(hour: notificationHour, minute: notificationMinute),
-                            builder: (BuildContext context, Widget? child) {
-                              return MediaQuery(
-                                data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                                child: child!,
-                              );
-                            },
-                          );
-                          if (picked != null) {
-                            setState(() {
-                              notificationHour = picked.hour;
-                              notificationMinute = picked.minute;
-                            });
-                            await StorageService.setNotificationTimeHour(picked.hour);
-                            await StorageService.setNotificationTimeMinute(picked.minute);
-                            if (notificationsEnabled) {
-                              NotificationService().scheduleDailyLawNotification();
-                            }
-                          }
-                        },
-                      ),
-                      if (notificationsEnabled)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0),
-                          child: Text(
-                            'Prochaine notification : ${getNextNotificationTimeString(notificationHour, notificationMinute)}',
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      const Divider(color: Colors.white30),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                        child: Row(
-                          children: [
-                            const Text(
-                              "Taille du texte :",
+                    return SingleChildScrollView(
+                      child: ListBody(
+                        children: <Widget>[
+                          SwitchListTile(
+                            secondary: const Icon(Icons.notifications_active, color: Colors.white70),
+                            title: const Text(
+                              "Notifications quotidiennes",
                               style: TextStyle(color: Colors.white70),
                             ),
-                            Expanded(
-                              child: Slider(
-                                value: currentTextSize,
-                                min: 0.8,
-                                max: 1.5,
-                                divisions: 7, // 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5
-                                label: currentTextSize.toStringAsFixed(1),
-                                onChanged: (double newValue) async {
-                                  setState(() {
-                                    currentTextSize = newValue;
-                                  });
-                                  await StorageService.setTextSize(newValue);
+                            value: notificationsEnabled,
+                            onChanged: _handleNotificationSwitch,
+                            activeColor: Colors.amber,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.watch_later, color: Colors.white70),
+                            title: const Text(
+                              "Heure de notification",
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            trailing: Text(
+                              '${notificationHour.toString().padLeft(2, '0')}:${notificationMinute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(color: Colors.amber, fontSize: 16),
+                            ),
+                            onTap: () async {
+                              final TimeOfDay? picked = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay(hour: notificationHour, minute: notificationMinute),
+                                builder: (BuildContext context, Widget? child) {
+                                  return MediaQuery(
+                                    data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                                    child: child!,
+                                  );
                                 },
-                                activeColor: Colors.amber,
-                                inactiveColor: Colors.white30,
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  notificationHour = picked.hour;
+                                  notificationMinute = picked.minute;
+                                });
+                                await StorageService.setNotificationTimeHour(picked.hour);
+                                await StorageService.setNotificationTimeMinute(picked.minute);
+                                if (notificationsEnabled) {
+                                  NotificationService().scheduleDailyLawNotification();
+                                }
+                              }
+                            },
+                          ),
+                          if (notificationsEnabled)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 72.0, bottom: 8.0), // Aligned with ListTile content
+                              child: Text(
+                                'Prochaine notification : ${getNextNotificationTimeString(notificationHour, notificationMinute)}',
+                                style: TextStyle(color: Colors.white54, fontSize: 12),
                               ),
                             ),
-                          ],
-                        ),
+                          const Divider(color: Colors.white30),
+                          ListTile(
+                            leading: const Icon(Icons.format_size, color: Colors.white70),
+                            title: const Text("Taille du texte", style: TextStyle(color: Colors.white70)),
+                            subtitle: Slider(
+                              value: currentTextSize,
+                              min: 0.8,
+                              max: 1.5,
+                              divisions: 7,
+                              label: currentTextSize.toStringAsFixed(1),
+                              onChanged: (double newValue) async {
+                                setState(() {
+                                  currentTextSize = newValue;
+                                });
+                                await StorageService.setTextSize(newValue);
+                              },
+                              activeColor: Colors.amber,
+                              inactiveColor: Colors.white30,
+                            ),
+                          ),
+                          const Divider(color: Colors.white30),
+                          ListTile(
+                            leading: const Icon(Icons.share, color: Colors.white70),
+                            title: const Text('Partager l\'application', style: TextStyle(color: Colors.white70)),
+                            onTap: () {
+                              Share.share('Découvrez les 48 lois du pouvoir ! Téléchargez l\'application ici : [lien vers l\'app]');
+                              Navigator.of(dialogContext).pop();
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.star, color: Colors.white70),
+                            title: const Text('Évaluer l\'application', style: TextStyle(color: Colors.white70)),
+                            onTap: () async {
+                              // Replace with your app's store URL
+                              final url = Uri.parse('https://play.google.com/store/apps/details?id=com.example.fohuit_lois');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
+                              Navigator.of(dialogContext).pop();
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.delete_sweep, color: Colors.white70),
+                            title: const Text('Réinitialiser les favoris', style: TextStyle(color: Colors.white70)),
+                            onTap: () async {
+                              final bool? confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Confirmation'),
+                                  content: const Text('Voulez-vous vraiment supprimer tous vos favoris ? Cette action est irréversible.'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Annuler')),
+                                    TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Supprimer', style: TextStyle(color: Colors.red))),
+                                  ],
+                                ),
+                              );
+                              if (confirmed == true) {
+                                await StorageService.clearFavorites();
+                                loadFavorites(); // Refresh the UI
+                                Navigator.of(dialogContext).pop();
+                              }
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.help_outline, color: Colors.white70),
+                            title: const Text('Revoir le guide', style: TextStyle(color: Colors.white70)),
+                            onTap: () async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool('hasSeenOnboarding', false);
+                              Navigator.of(dialogContext).pop();
+                              _checkAndShowOnboarding();
+                            },
+                          ),
+                        ],
                       ),
-                      // Autres options ici si nécessaire
-                    ],
-                  );
-                },
-              );
-            },
+                    );
+                  },
+                );
+              },
+            ),
           ),
           actions: <Widget>[
             TextButton(
