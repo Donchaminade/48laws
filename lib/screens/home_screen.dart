@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fohuit_lois/screens/notification_history_screen.dart';
+import 'package:fohuit_lois/services/logger_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import 'package:share_plus/share_plus.dart';
 import '../data/laws.dart' show allLaws;
 import '../models/law.dart';
@@ -151,6 +154,71 @@ class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPro
                   int notificationHour = snapshot.data!['notificationHour'];
                   int notificationMinute = snapshot.data!['notificationMinute'];
 
+                  String getNextNotificationTimeString(int hour, int minute) {
+                    final now = DateTime.now();
+                    var scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
+                    if (scheduledDate.isBefore(now)) {
+                      scheduledDate = scheduledDate.add(const Duration(days: 1));
+                      return 'Demain à ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+                    } else {
+                      return 'Aujourd\'hui à ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+                    }
+                  }
+
+                  void _handleNotificationSwitch(bool newValue) async {
+                    if (newValue) {
+                      final status = await Permission.notification.status;
+                      bool permissionGranted = status.isGranted;
+
+                      if (status.isDenied) {
+                        final bool? rationaleAccepted = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Permission de notification'),
+                            content: const Text('Pour recevoir la loi du jour, veuillez autoriser les notifications.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text('Ne pas autoriser'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                child: const Text('Autoriser'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (rationaleAccepted == true) {
+                          final newStatus = await Permission.notification.request();
+                          permissionGranted = newStatus.isGranted;
+                        }
+                      } else if (status.isPermanentlyDenied) {
+                        await openAppSettings();
+                        permissionGranted = (await Permission.notification.status).isGranted;
+                      }
+
+                      if (permissionGranted) {
+                        setState(() {
+                          notificationsEnabled = true;
+                        });
+                        await StorageService.setNotificationsEnabled(true);
+                        NotificationService().scheduleDailyLawNotification();
+                      } else {
+                        setState(() {
+                          notificationsEnabled = false;
+                        });
+                        await StorageService.setNotificationsEnabled(false);
+                      }
+                    } else {
+                      setState(() {
+                        notificationsEnabled = false;
+                      });
+                      await StorageService.setNotificationsEnabled(false);
+                      NotificationService().cancelAllNotifications();
+                    }
+                  }
+
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -160,17 +228,7 @@ class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPro
                           style: TextStyle(color: Colors.white70),
                         ),
                         value: notificationsEnabled,
-                        onChanged: (bool newValue) async {
-                          setState(() {
-                            notificationsEnabled = newValue;
-                          });
-                          await StorageService.setNotificationsEnabled(newValue);
-                          if (newValue) {
-                            NotificationService().scheduleDailyLawNotification();
-                          } else {
-                            NotificationService().cancelAllNotifications();
-                          }
-                        },
+                        onChanged: _handleNotificationSwitch,
                         activeColor: Colors.amber,
                       ),
                       ListTile(
@@ -206,6 +264,15 @@ class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPro
                           }
                         },
                       ),
+                      if (notificationsEnabled)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0),
+                          child: Text(
+                            'Prochaine notification : ${getNextNotificationTimeString(notificationHour, notificationMinute)}',
+                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       const Divider(color: Colors.white30),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -516,7 +583,7 @@ class HomeScreenState extends State<HomeScreen> with RouteAware, SingleTickerPro
               future: StorageService.getUnreadNotifications(),
               builder: (context, snapshot) {
                 final int unreadCount = snapshot.data?.length ?? 0;
-                print('Unread notifications count: $unreadCount');
+                logger.d('Unread notifications count: $unreadCount');
                 return Stack(
                   children: [
                     IconButton(

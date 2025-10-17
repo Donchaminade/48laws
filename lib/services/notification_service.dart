@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart'; // For MaterialPageRoute
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:fohuit_lois/services/logger_service.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
 import '../data/laws.dart'; // Assuming allLaws is here
 import '../models/law.dart';
@@ -47,10 +50,10 @@ class NotificationService {
 
   void onDidReceiveNotificationResponse(NotificationResponse notificationResponse) async {
     final String? payload = notificationResponse.payload;
-    print('Notification payload received: $payload');
+    logger.i('Notification payload received: $payload');
     if (payload != null && payload.isNotEmpty) {
       final int? lawNumber = int.tryParse(payload);
-      print('Parsed law number from payload: $lawNumber');
+      logger.i('Parsed law number from payload: $lawNumber');
       if (lawNumber != null) {
         Law? law;
         for (var l in allLaws) {
@@ -61,63 +64,99 @@ class NotificationService {
         }
 
         if (law != null) {
-          print('Navigating to HomeScreen with initialLawNumber: $lawNumber');
-          navigatorKey.currentState?.pushReplacement(
+          logger.i('Navigating to HomeScreen with initialLawNumber: $lawNumber');
+          navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (context) => HomeScreen(initialLawNumber: lawNumber),
             ),
           );
         } else {
-          print('Law not found for law number: $lawNumber');
+          logger.w('Law not found for law number: $lawNumber');
         }
       } else {
-        print('Failed to parse law number from payload.');
+        logger.w('Failed to parse law number from payload.');
       }
     } else {
-      print('Notification payload is null or empty.');
+      logger.w('Notification payload is null or empty.');
     }
   }
 
   Future<void> scheduleDailyLawNotification() async {
-    await flutterLocalNotificationsPlugin.cancelAll(); // Annule toutes les notifications existantes
+    final int hour = await StorageService.getNotificationTimeHour();
+    final int minute = await StorageService.getNotificationTimeMinute();
 
-    final Law lawToNotify = await _getOrCreateLawOfTheDay(); // Obtient ou crée la loi du jour
+    if (Platform.isAndroid) {
+      await AndroidAlarmManager.cancel(0); // Cancel any existing alarm
+      await AndroidAlarmManager.periodic(
+        const Duration(days: 1),
+        0, // Alarm ID
+        fireAlarm, // The top-level function from main.dart
+        startAt: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, hour, minute),
+        exact: true,
+        wakeup: true,
+        allowWhileIdle: true,
+      );
+      logger.i("Scheduled alarm for Android at $hour:$minute daily.");
+    } else if (Platform.isIOS) {
+      await flutterLocalNotificationsPlugin.cancelAll(); // Annule toutes les notifications existantes
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-        0, // Notification ID
-        'Loi du jour : ${lawToNotify.numero}',
-        lawToNotify.titre,
-        await _nextInstanceOfScheduledTime(),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'daily_law_channel',
-            'Lois du Jour',
-            channelDescription: 'Notifications quotidiennes des lois du pouvoir',
-            importance: Importance.max,
-            priority: Priority.high,
-            ticker: 'Loi du jour',
-            largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'), // Add app logo as large icon
-            styleInformation: BigTextStyleInformation(''), // Pour un texte plus long
-            enableVibration: true, // Activer la vibration
-            playSound: true, // Activer le son
-            sound: RawResourceAndroidNotificationSound(null), // Utiliser le son par défaut du système
-            ongoing: true, // Rendre la notification persistante
-            autoCancel: false, // Ne pas annuler automatiquement au clic
+      final Law lawToNotify = await _getOrCreateLawOfTheDay(); // Obtient ou crée la loi du jour
+
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+          0, // Notification ID
+          'Loi du jour : ${lawToNotify.numero}',
+          lawToNotify.titre,
+          await _nextInstanceOfScheduledTime(),
+          const NotificationDetails(
+            iOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+            ),
           ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        androidAllowWhileIdle: true,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time, // Répéter chaque jour à la même heure
-        payload: lawToNotify.numero.toString()); // Store law number in payload
+          androidAllowWhileIdle: true,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time, // Répéter chaque jour à la même heure
+          payload: lawToNotify.numero.toString()); // Store law number in payload
 
-    print('Notification for Law ${lawToNotify.numero} scheduled.');
+      logger.i('Notification for Law ${lawToNotify.numero} scheduled for iOS.');
+    }
   }
+
+  Future<void> showNotification() async {
+    final Law lawToNotify = await _getOrCreateLawOfTheDay();
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'Loi du jour : ${lawToNotify.numero}',
+      lawToNotify.titre,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_law_channel',
+          'Lois du Jour',
+          channelDescription: 'Notifications quotidiennes des lois du pouvoir',
+          importance: Importance.max,
+          priority: Priority.high,
+          ticker: 'Loi du jour',
+          largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+          styleInformation: BigTextStyleInformation(''),
+          enableVibration: true,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound(null),
+          ongoing: true,
+          autoCancel: false,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: lawToNotify.numero.toString(),
+    );
+    logger.i('Showing notification for Law ${lawToNotify.numero}');
+  }
+
 
   Future<Law> _getOrCreateLawOfTheDay() async {
     final DateTime now = DateTime.now();
@@ -139,7 +178,7 @@ class NotificationService {
         }
       }
       if (existingLaw != null) {
-        print('Returning already selected Law of the Day: ${existingLaw.numero}');
+        logger.d('Returning already selected Law of the Day: ${existingLaw.numero}');
         return existingLaw;
       }
     }
@@ -171,7 +210,7 @@ class NotificationService {
     // Add to history and unread only when a NEW law is selected for the day
     await StorageService.addNotifiedLawToHistory(selectedLaw.numero);
     await StorageService.addUnreadNotification(selectedLaw.numero);
-    print('Selected new Law of the Day: ${selectedLaw.numero} and added to history/unread.');
+    logger.i('Selected new Law of the Day: ${selectedLaw.numero} and added to history/unread.');
 
     return selectedLaw;
   }
@@ -191,7 +230,11 @@ class NotificationService {
   }
 
   Future<void> cancelAllNotifications() async {
+    if (Platform.isAndroid) {
+      await AndroidAlarmManager.cancel(0);
+      logger.i("Cancelled Android alarm.");
+    }
     await flutterLocalNotificationsPlugin.cancelAll();
-    print("All notifications cancelled.");
+    logger.i("All notifications cancelled.");
   }
 }

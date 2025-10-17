@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:fohuit_lois/screens/main_screen.dart';
+import 'package:fohuit_lois/services/logger_service.dart';
 import 'package:fohuit_lois/services/notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'route_observer.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // Import for FlutterLocalNotificationsPlugin
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+
+// This function will be executed by the alarm manager in the background
+@pragma('vm:entry-point')
+void fireAlarm() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
+  await NotificationService().showNotification();
+  logger.i("Alarm fired!");
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService().init();
+  await AndroidAlarmManager.initialize(); // Initialize Alarm Manager
 
-  // Request notification permissions
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.requestNotificationsPermission();
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-      ?.requestPermissions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
 
   // Handle notification launch
   final NotificationAppLaunchDetails? notificationAppLaunchDetails = await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();

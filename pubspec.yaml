@@ -22,6 +22,10 @@ dependencies:
   flutter_local_notifications: ^17.2.1+1
   timezone: ^0.9.4
   http: ^1.2.1
+  android_alarm_manager_plus: ^5.0.0
+
+  logger: ^2.3.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:
