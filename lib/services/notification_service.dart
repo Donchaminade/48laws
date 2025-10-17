@@ -126,34 +126,49 @@ class NotificationService {
 
   Future<void> showNotification() async {
     final Law lawToNotify = await _getOrCreateLawOfTheDay();
+
+    // Crée un extrait du texte de la loi
+    final String snippet = lawToNotify.texte.length > 100
+        ? '${lawToNotify.texte.substring(0, 100)}...'
+        : lawToNotify.texte;
+
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'daily_law_channel',
+      'Lois du Jour',
+      channelDescription: 'Notifications quotidiennes des lois du pouvoir',
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'Loi du jour',
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      styleInformation: BigTextStyleInformation(
+        lawToNotify.texte, // Texte complet lorsque la notification est étendue
+        htmlFormatBigText: false,
+        contentTitle: 'Loi ${lawToNotify.numero} : ${lawToNotify.titre}', // Titre dans la vue étendue
+        summaryText: 'Loi du jour', // Texte résumé
+      ),
+      enableVibration: true,
+      playSound: true,
+      ongoing: false, // La notification n'est pas persistante
+      autoCancel: true, // La notification se ferme au clic
+    );
+
+    final NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+
     await flutterLocalNotificationsPlugin.show(
       0,
-      'Loi du jour : ${lawToNotify.numero}',
-      lawToNotify.titre,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_law_channel',
-          'Lois du Jour',
-          channelDescription: 'Notifications quotidiennes des lois du pouvoir',
-          importance: Importance.max,
-          priority: Priority.high,
-          ticker: 'Loi du jour',
-          largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-          styleInformation: BigTextStyleInformation(''),
-          enableVibration: true,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound(null),
-          ongoing: true,
-          autoCancel: false,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
+      'Loi ${lawToNotify.numero} : ${lawToNotify.titre}', // Titre principal de la notification
+      snippet, // Corps de la notification (l'extrait)
+      notificationDetails,
       payload: lawToNotify.numero.toString(),
     );
+
     logger.i('Showing notification for Law ${lawToNotify.numero}');
   }
 
