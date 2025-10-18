@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/> <!-- For Android 13+ -->
 
     <application
-        android:label="4huit_lois"
+        android:label="48 Lois du Pouvoir"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

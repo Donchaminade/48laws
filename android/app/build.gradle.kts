@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.4huit_lois"
+    namespace = "com.example.fohuit_lois"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.4huit_lois"
+        applicationId = "com.example.fohuit_lois"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
